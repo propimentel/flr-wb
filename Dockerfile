@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for FastAPI full-stack application
 
 # Frontend build stage
-FROM node:18-alpine AS build-frontend
+FROM node:20-alpine AS build-frontend
 
 WORKDIR /app
 
