@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 from pydantic_settings import BaseSettings
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
 
     # Server settings
     host: str = "0.0.0.0"
-    port: int = 4000
+    port: int = int(os.getenv("PORT", "4000"))
 
     class Config:
         env_file = [".env"]

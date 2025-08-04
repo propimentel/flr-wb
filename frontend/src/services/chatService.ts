@@ -11,7 +11,7 @@ import {
   deleteDoc,
   doc,
 } from 'firebase/firestore';
-import { getFirebaseFirestore } from '../shared/firebase';
+import { getFirebaseFirestore, getFirebaseAuth } from '../shared/firebase';
 import { ChatMessage, FileMetadata } from '../types/chat';
 
 export class ChatService {
@@ -121,9 +121,20 @@ export class ChatService {
     formData.append('uid', uid);
 
     try {
+      // Get Firebase auth token for backend authentication
+      const auth = getFirebaseAuth();
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : null;
+      
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Example API call to your backend
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/upload/', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
