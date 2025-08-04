@@ -4,7 +4,7 @@ echo ""
 echo "🚀 Starting development servers..."
 echo ""
 echo "📱 Frontend: http://localhost:3000"
-echo "🔧 Backend: http://localhost:8000"
+echo "🔧 Backend: http://localhost:4000"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 echo ""
@@ -14,4 +14,4 @@ npx concurrently \
   --names "FRONTEND,BACKEND" \
   --prefix-colors "cyan,yellow" \
   "cd frontend && yarn dev" \
-  "cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+  "cd backend && . .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 4000"
