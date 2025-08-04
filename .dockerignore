@@ -1,0 +1,70 @@
+# Git and version control
+.git
+.gitignore
+*.md
+README.md
+DEVELOPMENT.md
+FIRESTORE_SECURITY.md
+
+# Node.js
+frontend/node_modules
+frontend/.next
+frontend/out
+shared/node_modules
+shared/dist
+
+# Python
+backend/.venv
+backend/__pycache__
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.pytest_cache
+backend/.coverage
+
+# Environment files (will be provided at runtime)
+.env
+.env.local
+.env.production
+*.env
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log
+*.tmp
+temp/
+tmp/
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD and deployment
+.github/
+infra/
+*.sh
+
+# Testing
+test_*.py
+*_test.py
+tests/
+*.test.json
+
+# Documentation
+docs/
+*.md
+
+# Deployment scripts
+deploy-*.sh
+build-*.sh

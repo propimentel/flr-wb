@@ -1,0 +1,51 @@
+{
+  "name": "frl-wb",
+  "version": "1.0.0",
+  "description": "Real-time collaborative whiteboard with Firebase and FastAPI",
+  "private": true,
+  "scripts": {
+    "build": "./build-frontend.sh",
+    "build:frontend": "cd frontend && yarn build",
+    "build:shared": "cd shared && npm run build",
+    "start:backend": "cd backend && source .venv/bin/activate && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "start:backend:dev": "cd backend && source .venv/bin/activate && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:frontend": "cd frontend && yarn dev",
+    "dev:full": "./start-dev.sh",
+    "install:all": "cd shared && npm install && cd ../frontend && yarn install",
+    "clean": "rm -rf frontend/out frontend/.next backend/static shared/dist",
+    "test": "yarn test:frontend && yarn test:backend",
+    "test:frontend": "cd frontend && yarn test",
+    "test:backend": "cd backend && bash -c 'source .venv/bin/activate && python -m pytest'",
+    "test:coverage": "cd frontend && yarn test:coverage && cd ../backend && bash -c 'source .venv/bin/activate && python -m pytest --cov'",
+    "lint": "yarn lint:frontend && yarn lint:backend",
+    "lint:frontend": "cd frontend && yarn lint",
+    "lint:backend": "cd backend && bash -c 'source .venv/bin/activate && flake8 app/ tests/'",
+    "lint:fix": "yarn lint:frontend:fix && yarn lint:backend:fix",
+    "lint:frontend:fix": "cd frontend && yarn lint:fix",
+    "lint:backend:fix": "cd backend && bash -c 'source .venv/bin/activate && black app/ tests/ && isort app/ tests/'",
+    "pre-commit:install": "pre-commit install",
+    "pre-commit:run": "pre-commit run --all-files"
+  },
+  "workspaces": [
+    "frontend",
+    "shared"
+  ],
+  "keywords": [
+    "whiteboard",
+    "collaboration",
+    "firebase",
+    "fastapi",
+    "nextjs",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "^5.9.2"
+  }
+}

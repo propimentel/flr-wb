@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for authentication and validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function isValidTimestamp(field) {
+      return field is timestamp && field <= request.time;
+    }
+    
+    function isValidString(field, maxLength) {
+      return field is string && field.size() <= maxLength;
+    }
+    
+    // Boards collection - collaborative whiteboards
+    match /boards/{boardId} {
+      // Anyone authenticated can read/write boards (collaborative)
+      allow read, write: if isAuthenticated();
+      
+      // Subcollections for board data
+      match /strokes/{strokeId} {
+        // Allow authenticated users to read/write strokes
+        allow read, write: if isAuthenticated();
+        
+        // Validate stroke data structure
+        allow create: if isAuthenticated() 
+          && isValidString(resource.data.id, 50)
+          && resource.data.points is list
+          && resource.data.color is string
+          && resource.data.size is number
+          && resource.data.size > 0 
+          && resource.data.size <= 50
+          && isValidTimestamp(resource.data.timestamp);
+        
+        allow update: if isAuthenticated()
+          && resource.data.id == request.resource.data.id; // Prevent ID changes
+      }
+      
+      match /messages/{messageId} {
+        // Allow authenticated users to read/write messages
+        allow read, write: if isAuthenticated();
+        
+        // Validate message data structure
+        allow create: if isAuthenticated()
+          && isValidString(resource.data.id, 50)
+          && isValidString(resource.data.text, 1000) // Max 1000 chars
+          && isValidString(resource.data.uid, 50)
+          && resource.data.uid == request.auth.uid // Must match authenticated user
+          && isValidTimestamp(resource.data.timestamp);
+        
+        allow update: if isAuthenticated()
+          && resource.data.id == request.resource.data.id
+          && resource.data.uid == request.auth.uid; // Only message author can update
+      }
+    }
+    
+    // User-specific data
+    match /users/{uid} {
+      // Users can only access their own user document
+      allow read, write: if isAuthenticated() && isOwner(uid);
+      
+      // User uploads subcollection
+      match /uploads/{fileId} {
+        // Users can only access their own uploads
+        allow read, write: if isAuthenticated() && isOwner(uid);
+        
+        // Validate upload data structure
+        allow create: if isAuthenticated() 
+          && isOwner(uid)
+          && isValidString(resource.data.id, 50)
+          && isValidString(resource.data.filename, 255)
+          && isValidString(resource.data.download_url, 2048)
+          && resource.data.file_size is int
+          && resource.data.file_size > 0
+          && resource.data.file_size <= 10485760 // 10MB max
+          && isValidString(resource.data.mime_type, 100)
+          && resource.data.user_uid == uid
+          && isValidTimestamp(resource.data.uploaded_at);
+        
+        allow update: if isAuthenticated()
+          && isOwner(uid)
+          && resource.data.id == request.resource.data.id
+          && resource.data.user_uid == uid; // Prevent UID changes
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

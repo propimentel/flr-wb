@@ -1,0 +1,154 @@
+{
+  "description": "Firestore Security Rules Tests for Whiteboard Application",
+  "tests": [
+    {
+      "description": "Should deny access to unauthenticated users",
+      "code": "firebase.firestore().collection('boards').doc('test-board').get()",
+      "auth": null,
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should allow authenticated users to read boards",
+      "code": "firebase.firestore().collection('boards').doc('test-board').get()",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should allow authenticated users to write boards",
+      "code": "firebase.firestore().collection('boards').doc('test-board').set({boardId: 'test-board', created_at: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should allow authenticated users to create valid strokes",
+      "code": "firebase.firestore().collection('boards').doc('test-board').collection('strokes').doc('stroke1').set({id: 'stroke1', points: [[0,0],[10,10]], color: '#000000', size: 5, timestamp: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should deny strokes with invalid size",
+      "code": "firebase.firestore().collection('boards').doc('test-board').collection('strokes').doc('stroke2').set({id: 'stroke2', points: [[0,0]], color: '#000000', size: 100, timestamp: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should allow users to create their own messages",
+      "code": "firebase.firestore().collection('boards').doc('test-board').collection('messages').doc('msg1').set({id: 'msg1', text: 'Hello world', uid: 'user1', timestamp: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should deny users from creating messages with wrong uid",
+      "code": "firebase.firestore().collection('boards').doc('test-board').collection('messages').doc('msg2').set({id: 'msg2', text: 'Fake message', uid: 'user2', timestamp: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should deny messages that are too long",
+      "code": "firebase.firestore().collection('boards').doc('test-board').collection('messages').doc('msg3').set({id: 'msg3', text: 'x'.repeat(1001), uid: 'user1', timestamp: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should allow users to access their own uploads",
+      "code": "firebase.firestore().collection('users').doc('user1').collection('uploads').doc('file1').get()",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should deny users from accessing other users' uploads",
+      "code": "firebase.firestore().collection('users').doc('user2').collection('uploads').doc('file1').get()",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should allow users to create valid uploads",
+      "code": "firebase.firestore().collection('users').doc('user1').collection('uploads').doc('file1').set({id: 'file1', filename: 'test.pdf', download_url: 'https://storage.googleapis.com/bucket/file', file_size: 1024, mime_type: 'application/pdf', user_uid: 'user1', uploaded_at: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "ALLOWED"
+    },
+    {
+      "description": "Should deny uploads that are too large",
+      "code": "firebase.firestore().collection('users').doc('user1').collection('uploads').doc('file2').set({id: 'file2', filename: 'huge.pdf', download_url: 'https://storage.googleapis.com/bucket/file2', file_size: 20971520, mime_type: 'application/pdf', user_uid: 'user1', uploaded_at: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should deny uploads with wrong user_uid",
+      "code": "firebase.firestore().collection('users').doc('user1').collection('uploads').doc('file3').set({id: 'file3', filename: 'fake.pdf', download_url: 'https://storage.googleapis.com/bucket/file3', file_size: 1024, mime_type: 'application/pdf', user_uid: 'user2', uploaded_at: firebase.firestore.Timestamp.now()})",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"  
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    },
+    {
+      "description": "Should deny access to unknown collections",
+      "code": "firebase.firestore().collection('unknown').doc('test').get()",
+      "auth": {
+        "uid": "user1",
+        "token": {
+          "email": "user1@test.com"
+        }
+      },
+      "expectation": "PERMISSION_DENIED"
+    }
+  ]
+}

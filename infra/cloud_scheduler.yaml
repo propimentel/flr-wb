@@ -1,0 +1,16 @@
+# Cloud Scheduler Configuration for Cleanup
+# This configuration schedules a daily cleanup job
+
+description: "Daily cleanup job for old Firestore data and GCS objects."
+name: "projects/{{project_id}}/locations/{{region}}/jobs/cleanup-job"
+schedule: "0 0 * * *"
+timeZone: "UTC"
+httpTarget:
+  uri: "https://{{your_backend_url}}/api/admin/cleanup"
+  httpMethod: POST
+  headers:
+    Content-Type: "application/json"
+    SERVICE_KEY: "{{your_service_cleanup_key}}"
+authHeader:
+  oidcToken:
+    serviceAccountEmail: "{{service_account_email}}"

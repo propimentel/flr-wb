@@ -1,0 +1,71 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: frl-wb-backend
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+        autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/cpu-throttling: "true"
+        run.googleapis.com/memory: "1Gi"
+        run.googleapis.com/cpu: "1000m"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: frl-wb@appspot.gserviceaccount.com
+      containers:
+      - image: gcr.io/frl-wb/frl-wb-backend:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: FIREBASE_PROJECT_ID
+          value: "frl-wb-3bb36"
+        - name: GCP_BUCKET_NAME
+          value: "wb-files"
+        - name: MAX_FILES_PER_USER
+          value: "5"
+        - name: MAX_FILE_SIZE_MB
+          value: "10"
+        - name: RETENTION_DAYS
+          value: "15"
+        - name: DEBUG
+          value: "false"
+        - name: ALLOWED_ORIGINS
+          value: '["https://frl-wb.web.app","https://your-custom-domain.com"]'
+        - name: SERVICE_CLEANUP_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cleanup-service-key
+              key: key
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+  traffic:
+  - percent: 100
+    latestRevision: true
