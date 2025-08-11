@@ -7,7 +7,7 @@ import {
   resizeCanvas,
   clearCanvas,
 } from '../utils/drawingUtils';
-import { StrokeChunk, WhiteboardSettings, DrawingState, Point } from '../types/whiteboard';
+import { StrokeChunk, WhiteboardSettings, DrawingState } from '../types/whiteboard';
 import { getStoredUid } from '../shared/firebase';
 
 interface WhiteboardProps {
@@ -48,7 +48,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
     // Check if canvases have valid dimensions
     if (canvasRef.current.width === 0 || canvasRef.current.height === 0 ||
         offscreenCanvasRef.current.width === 0 || offscreenCanvasRef.current.height === 0) {
-      console.warn('Canvas has zero dimensions, skipping render');
       return;
     }
 
@@ -169,7 +168,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
       strokeComplete: true,
     };
 
-    // Reset drawing state first
+    // Save the stroke to Firestore
+    serviceRef.current.addStrokeChunk(chunk);
+
+    // Reset drawing state
     setDrawingState((prev) => ({
       ...prev,
       isDrawing: false,
@@ -177,9 +179,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
       currentStrokeId: null,
       chunkIndex: 0,
     }));
-
-    // Only save to Firestore - let the real-time listener handle the UI update
-    serviceRef.current.addStrokeChunk(chunk).catch(console.error);
   }, [drawingState, settings, boardId, uid]);
 
   const handleStrokeUpdate = useCallback((strokes: StrokeChunk[]) => {
@@ -205,7 +204,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
         clearCanvas(offscreenCanvasRef.current);
       }
     } catch (error) {
-      console.error('Failed to clear canvas:', error);
     }
   }, [boardId]);
 

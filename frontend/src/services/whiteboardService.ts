@@ -25,7 +25,6 @@ export class WhiteboardService {
       const strokesRef = collection(this.firestore, `boards/${strokeChunk.boardId}/strokes`);
       await addDoc(strokesRef, strokeChunk);
     } catch (error) {
-      console.error('Error adding stroke chunk:', error);
       throw error;
     }
   }
@@ -59,8 +58,6 @@ export class WhiteboardService {
       });
 
       onStrokesUpdate(strokes);
-    }, (error) => {
-      console.error('Error listening to strokes:', error);
     });
   }
 
@@ -78,7 +75,6 @@ export class WhiteboardService {
       
       await Promise.all(deletePromises);
     } catch (error) {
-      console.error('Error clearing strokes:', error);
       throw error;
     }
   }

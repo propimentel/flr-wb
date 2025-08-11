@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -29,8 +30,8 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     debug: bool = False
 
-    # CORS settings
-    allowed_origins: list[str] = ["http://localhost:3000", "https://localhost:3000"]
+    # CORS settings - in production, allow all origins by default
+    allowed_origins: list[str] = ["*"]
 
     # Server settings
     host: str = "0.0.0.0"

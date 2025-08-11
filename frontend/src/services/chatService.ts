@@ -4,7 +4,6 @@ import {
   onSnapshot,
   query,
   orderBy,
-  Timestamp,
   DocumentData,
   QuerySnapshot,
   getDocs,
@@ -104,7 +103,6 @@ export class ChatService {
       
       await Promise.all(deletePromises);
     } catch (error) {
-      console.error('Error clearing messages:', error);
       throw error;
     }
   }
@@ -124,6 +122,7 @@ export class ChatService {
       // Get Firebase auth token for backend authentication
       const auth = getFirebaseAuth();
       const user = auth.currentUser;
+      
       const token = user ? await user.getIdToken() : null;
       
       const headers: Record<string, string> = {};
@@ -132,7 +131,10 @@ export class ChatService {
       }
 
       // Example API call to your backend
-      const response = await fetch('/api/upload/', {
+      const baseUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:4000' 
+        : (process.env.NEXT_PUBLIC_BACKEND_URL || '');
+      const response = await fetch(`${baseUrl}/api/upload/`, {
         method: 'POST',
         headers,
         body: formData,
@@ -156,7 +158,6 @@ export class ChatService {
 
       return fileMetadata;
     } catch (error) {
-      console.error('File upload failed:', error);
       // Fallback for demo purposes
       const fileMetadata: FileMetadata = {
         id: crypto.randomUUID(),

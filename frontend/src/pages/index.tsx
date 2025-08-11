@@ -1,22 +1,13 @@
 import Head from 'next/head'
 import { useUser } from '../contexts/UserContext'
 import { useEffect, useState } from 'react'
-import { getStoredUid } from '../shared/firebase'
-import { Whiteboard } from '../components/Whiteboard'
-import { Chat } from '../components/Chat'
-import { ErrorBoundary } from '../components/ErrorBoundary'
-import { Tooltip } from '../components/Tooltip'
-
+import { Whiteboard } from '../components/Whiteboard';
+import { Chat } from '../components/Chat';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 export default function Home() {
   const { user, loading, error } = useUser()
-  const [storedUid, setStoredUid] = useState<string | null>(null)
   const [chatWidth, setChatWidth] = useState(320) // 320px = w-80
   const [isResizing, setIsResizing] = useState(false)
-
-  useEffect(() => {
-    // Get stored UID from localStorage once component mounts
-    setStoredUid(getStoredUid())
-  }, [user])
 
   // Handle mouse move for resizing
   useEffect(() => {

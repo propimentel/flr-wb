@@ -29,14 +29,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Debug: Log all NEXT_PUBLIC environment variables first
-    console.log('All NEXT_PUBLIC environment variables:');
-    Object.keys(process.env)
-      .filter(key => key.startsWith('NEXT_PUBLIC_'))
-      .forEach(key => {
-        console.log(`${key}:`, process.env[key] ? `${process.env[key]?.substring(0, 10)}...` : 'MISSING');
-      });
-
     // Initialize Firebase with config from environment variables
     const firebaseConfig = {
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -47,22 +39,11 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
     };
 
-    // Debug: Log the config to see if environment variables are loaded
-    console.log('Firebase Config Created:', {
-      apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
-      authDomain: firebaseConfig.authDomain || 'MISSING',
-      projectId: firebaseConfig.projectId || 'MISSING',
-      storageBucket: firebaseConfig.storageBucket || 'MISSING',
-      messagingSenderId: firebaseConfig.messagingSenderId || 'MISSING',
-      appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : 'MISSING',
-    });
-
     // Check if any required fields are missing
     const requiredFields = ['apiKey', 'authDomain', 'projectId', 'appId'];
     const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig]);
     
     if (missingFields.length > 0) {
-      console.error('Missing required Firebase configuration fields:', missingFields);
       setError(`Missing Firebase configuration: ${missingFields.join(', ')}`);
       setLoading(false);
       return;
@@ -83,7 +64,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
             const anonymousUser = await signInAnonymouslyAndStoreUid();
             setUser(anonymousUser);
           } catch (authError) {
-            console.error('Error signing in anonymously:', authError);
             setError('Failed to authenticate');
           } finally {
             setLoading(false);
@@ -93,7 +73,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
       return () => unsubscribe();
     } catch (initError) {
-      console.error('Error initializing Firebase:', initError);
       setError('Failed to initialize Firebase');
       setLoading(false);
     }

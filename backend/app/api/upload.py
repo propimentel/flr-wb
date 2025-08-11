@@ -105,8 +105,8 @@ async def upload_to_gcs(file: UploadFile, blob_name: str) -> str:
         # Upload file
         blob.upload_from_file(file.file, content_type=blob.content_type)
 
-        # Make blob publicly readable
-        blob.make_public()
+        # Note: Bucket is already configured for public access via uniform bucket-level access
+        # So we don't need to call blob.make_public() on individual objects
 
         return blob.public_url
 

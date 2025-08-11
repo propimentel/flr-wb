@@ -3,7 +3,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  onError?: (_error: Error, _errorInfo: ErrorInfo) => void;
 }
 
 interface State {
@@ -24,9 +24,6 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console or external service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
     // Update state with error details
     this.setState({
       error,
@@ -75,7 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 Oops! Something went wrong
               </h2>
               <p className="text-gray-600 mb-6">
-                We're sorry, but there was an error loading this part of the application.
+                We&apos;re sorry, but there was an error loading this part of the application.
               </p>
               
               {process.env.NODE_ENV === 'development' && this.state.error && (

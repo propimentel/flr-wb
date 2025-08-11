@@ -12,25 +12,9 @@ let firestore: Firestore | null = null;
  */
 export const initFirebase = (appConfig: FirebaseOptions): FirebaseApp => {
   if (!app) {
-    console.log('Initializing Firebase with config:', {
-      apiKey: appConfig.apiKey ? `${appConfig.apiKey.substring(0, 10)}...` : 'MISSING',
-      authDomain: appConfig.authDomain || 'MISSING',
-      projectId: appConfig.projectId || 'MISSING',
-      storageBucket: appConfig.storageBucket || 'MISSING',
-      messagingSenderId: appConfig.messagingSenderId || 'MISSING',
-      appId: appConfig.appId ? `${appConfig.appId.substring(0, 10)}...` : 'MISSING',
-    });
-    
     app = initializeApp(appConfig);
-    console.log('Firebase app initialized successfully');
-    
     auth = getAuth(app);
-    console.log('Firebase Auth initialized');
-    
     firestore = getFirestore(app);
-    console.log('Firestore initialized');
-  } else {
-    console.log('Firebase already initialized, reusing existing app');
   }
   return app;
 };
@@ -77,7 +61,6 @@ export const signInAnonymouslyAndStoreUid = async (): Promise<User> => {
     
     return user;
   } catch (error) {
-    console.error('Error during anonymous sign-in:', error);
     throw error;
   }
 };

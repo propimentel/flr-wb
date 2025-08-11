@@ -1,10 +1,8 @@
 import { 
   getDistance, 
   getPointerPosition, 
-  drawSmoothLine, 
   optimizePoints, 
   smoothPoints,
-  resizeCanvas,
   clearCanvas 
 } from '../../utils/drawingUtils'
 

@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Configuration
-PROJECT_ID="frl-wb"
+PROJECT_ID="frl-wb-3bb36"
 REGION="us-central1"
 SERVICE_NAME="frl-wb-backend"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
@@ -62,9 +62,9 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --concurrency 80 \
     --timeout 300 \
-    --max-instances 10 \
+    --max-instances 1 \
     --min-instances 0 \
-    --set-env-vars "PORT=8080,FIREBASE_PROJECT_ID=frl-wb-3bb36,GCP_BUCKET_NAME=wb-files,MAX_FILES_PER_USER=5,MAX_FILE_SIZE_MB=10,RETENTION_DAYS=15,DEBUG=false,ALLOWED_ORIGINS=[\"https://frl-wb.web.app\",\"https://your-custom-domain.com\"]" \
+    --set-env-vars "FIREBASE_PROJECT_ID=frl-wb-3bb36,GCP_BUCKET_NAME=wb-files-3bb36,MAX_FILES_PER_USER=5,MAX_FILE_SIZE_MB=10,RETENTION_DAYS=15,DEBUG=false" \
     --set-secrets "SERVICE_CLEANUP_KEY=${CLEANUP_KEY_SECRET}:latest"
 
 # Get the service URL

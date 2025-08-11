@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { ChatService } from '../services/chatService';
-import { ChatMessage, ChatState, FileMetadata } from '../types/chat';
+import { ChatMessage, ChatState } from '../types/chat';
 import { getStoredUid } from '../shared/firebase';
 import { Tooltip } from './Tooltip';
 // LLM-UI imports for future use
@@ -64,7 +65,6 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
       await serviceRef.current.addTextMessage(boardId, uid, content);
       setInputValue('');
     } catch (error) {
-      console.error('Failed to send message:', error);
       setChatState(prev => ({
         ...prev,
         error: 'Failed to send message',
@@ -92,7 +92,6 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
       await serviceRef.current.addFileMessage(boardId, uid, fileMetadata);
       setUploadedFileCount(prev => prev + 1);
     } catch (error) {
-      console.error('Failed to upload file:', error);
       setChatState(prev => ({
         ...prev,
         error: 'Failed to upload file',
@@ -125,7 +124,6 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
     try {
       await serviceRef.current.clearAllMessages(boardId);
     } catch (error) {
-      console.error('Failed to clear chat:', error);
       setChatState(prev => ({
         ...prev,
         error: 'Failed to clear chat'
@@ -174,11 +172,13 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
     return (
       <div className="file-message">
         {isImage ? (
-          <img
+          <Image
             src={fileMetadata.url}
             alt={fileMetadata.name}
             className="file-preview-image"
-            style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px' }}
+            style={{ borderRadius: '8px' }}
+            width={200}
+            height={150}
           />
         ) : (
           <a
