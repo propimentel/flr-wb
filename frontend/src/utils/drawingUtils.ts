@@ -133,12 +133,37 @@ export const optimizePoints = (points: Point[], minDistance: number = 2): Point[
  * Resize canvas to match display size while maintaining drawing context
  */
 export const resizeCanvas = (canvas: HTMLCanvasElement): void => {
-  const rect = canvas.getBoundingClientRect();
   const devicePixelRatio = window.devicePixelRatio || 1;
   
-  // Fallback dimensions if getBoundingClientRect returns zero
-  const width = rect.width || 800;
-  const height = rect.height || 600;
+  // Get parent container dimensions first
+  const parentRect = canvas.parentElement?.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  
+  // Prefer parent dimensions over canvas rect
+  let width = parentRect?.width || canvasRect.width;
+  let height = parentRect?.height || canvasRect.height;
+  
+  // If we still don't have valid dimensions, don't resize
+  if (!width || !height || width < 50 || height < 50) {
+    console.log('Skipping canvas resize - invalid dimensions:', { 
+      parentRect: { width: parentRect?.width, height: parentRect?.height },
+      canvasRect: { width: canvasRect.width, height: canvasRect.height }
+    });
+    return;
+  }
+  
+  // Round to avoid sub-pixel issues
+  width = Math.floor(width);
+  height = Math.floor(height);
+  
+  // Don't resize if canvas already has the correct dimensions
+  const currentDisplayWidth = Math.round(canvas.width / devicePixelRatio);
+  const currentDisplayHeight = Math.round(canvas.height / devicePixelRatio);
+  
+  if (Math.abs(currentDisplayWidth - width) < 2 && Math.abs(currentDisplayHeight - height) < 2) {
+    console.log('Canvas already correct size, skipping resize');
+    return;
+  }
   
   // Set the actual size in memory (scaled to account for high DPI displays)
   canvas.width = width * devicePixelRatio;
@@ -153,6 +178,14 @@ export const resizeCanvas = (canvas: HTMLCanvasElement): void => {
   if (ctx) {
     ctx.scale(devicePixelRatio, devicePixelRatio);
   }
+  
+  // Debug log to see actual dimensions
+  console.log('Canvas resized to:', {
+    target: { width, height },
+    actual: { width: canvas.width, height: canvas.height },
+    parent: { width: parentRect?.width, height: parentRect?.height },
+    canvas: { width: canvasRect.width, height: canvasRect.height }
+  });
 };
 
 /**

@@ -212,3 +212,7 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Serve-only static export from frontend (do not commit build artifacts)
+backend/static/
+!backend/static/.gitkeep

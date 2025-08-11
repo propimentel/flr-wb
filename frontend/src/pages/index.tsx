@@ -96,10 +96,11 @@ export default function Home() {
             <div className="flex-1 flex overflow-hidden">
               {/* Whiteboard Section - Left Side */}
               <div 
-                className="bg-white overflow-hidden" 
+                className="flex-1 bg-white overflow-hidden" 
                 style={{ 
-                  width: `calc(100% - ${chatWidth}px - 8px)`,
-                  borderRight: '1px solid #fecdd3'
+                  borderRight: '1px solid #fecdd3',
+                  display: 'flex',
+                  flexDirection: 'column'
                 }}
               >
                 <ErrorBoundary>
@@ -126,7 +127,7 @@ export default function Home() {
               
               {/* Chat Section - Right Side */}
               <div 
-                className="bg-white flex flex-col overflow-hidden"
+                className="bg-white flex flex-col overflow-hidden flex-shrink-0"
                 style={{ 
                   width: `${chatWidth}px`
                 }}
