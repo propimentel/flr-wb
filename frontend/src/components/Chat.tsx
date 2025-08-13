@@ -4,10 +4,6 @@ import { ChatService } from '../services/chatService';
 import { ChatMessage, ChatState } from '../types/chat';
 import { getStoredUid } from '../shared/firebase';
 import { Tooltip } from './Tooltip';
-// LLM-UI imports for future use
-// import { useLLMOutput } from '@llm-ui/react';
-// import { markdownLookBack } from '@llm-ui/markdown';
-// import { codeBlockLookBack } from '@llm-ui/code';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -163,6 +159,103 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
     return uid.substring(0, 5);
   };
 
+  // Helper function to download files using proper REST API
+  const downloadFile = async (fileUrl: string, filename: string, fileId?: string) => {
+    if (!fileId) {
+      console.error('File ID is required for download');
+      // Fallback to direct URL
+      window.open(fileUrl, '_blank');
+      return;
+    }
+
+    try {
+      // Use proper REST endpoint: GET /api/files/{id}
+      const baseUrl = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:4000' 
+        : (process.env.NEXT_PUBLIC_BACKEND_URL || '');
+      const downloadUrl = `${baseUrl}/api/files/${fileId}`;
+      
+      // Get Firebase auth token for backend authentication
+      const { getFirebaseAuth } = await import('../shared/firebase');
+      const auth = getFirebaseAuth();
+      const user = auth.currentUser;
+      const token = user ? await user.getIdToken() : null;
+      
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Fetch the file using proper REST API
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+      
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create object URL
+      const objectUrl = URL.createObjectURL(blob);
+      
+      // Create temporary anchor element and trigger download
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: open in new tab if download fails
+      window.open(fileUrl, '_blank');
+    }
+  };
+
+  // Shared Download icon component - used for both images and files
+  const DownloadIcon = ({ size = 12, className = "" }) => (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7,10 12,15 17,10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  );
+
+  // Eye/View icon component - for viewing images full size
+  const ViewIcon = ({ size = 12, className = "" }) => (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+
   const renderFileMessage = (message: ChatMessage) => {
     const { fileMetadata } = message;
     if (!fileMetadata) return null;
@@ -170,25 +263,59 @@ export const Chat: React.FC<ChatProps> = ({ boardId }) => {
     const isImage = fileMetadata.type.startsWith('image/');
 
     return (
-      <div className="file-message">
+      <div className="file-message flex justify-center relative">
         {isImage ? (
-          <Image
-            src={fileMetadata.url}
-            alt={fileMetadata.name}
-            className="file-preview-image"
-            style={{ borderRadius: '8px' }}
-            width={200}
-            height={150}
-          />
+          <>
+            <Image
+              src={fileMetadata.url}
+              alt={fileMetadata.name}
+              className="file-preview-image cursor-pointer object-cover"
+              style={{ borderRadius: '12px' }}
+              width={200}
+              height={150}
+              onClick={() => window.open(fileMetadata.url, '_blank')}
+              title={`Click to view ${fileMetadata.name} full size`}
+            />
+            {/* Action buttons overlay - fixed at bubble bottom right */}
+            <div className="absolute bottom-1 right-1 flex gap-1">
+              {/* View button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(fileMetadata.url, '_blank');
+                }}
+                className="bg-black bg-opacity-70 hover:bg-opacity-90 text-white p-1.5 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+                title="View full size"
+              >
+                <ViewIcon size={12} className="text-white" />
+              </button>
+              {/* Download button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadFile(fileMetadata.url, fileMetadata.name, fileMetadata.id);
+                }}
+                className="bg-black bg-opacity-70 hover:bg-opacity-90 text-white p-1.5 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+                title="Download image"
+              >
+                <DownloadIcon size={12} className="text-white" />
+              </button>
+            </div>
+          </>
         ) : (
-          <a
-            href={fileMetadata.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-800 hover:text-gray-600 text-sm cursor-pointer"
+          <button
+            onClick={() => downloadFile(fileMetadata.url, fileMetadata.name, fileMetadata.id)}
+            className="w-full text-gray-800 hover:text-gray-700 text-sm cursor-pointer flex items-center justify-between gap-2 p-3 bg-transparent rounded-xl hover:bg-black hover:bg-opacity-5 transition-colors"
+            title={`Click to download ${fileMetadata.name}`}
           >
-            📎 {fileMetadata.name}
-          </a>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span>📎</span>
+              <span className="truncate">{fileMetadata.name}</span>
+            </div>
+            <div className="bg-black bg-opacity-70 hover:bg-opacity-90 text-white p-1.5 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110">
+              <DownloadIcon size={12} className="text-white flex-shrink-0" />
+            </div>
+          </button>
         )}
       </div>
     );

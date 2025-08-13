@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from google.cloud import firestore, storage
 
 from app.core.settings import settings
@@ -124,7 +124,7 @@ async def save_upload_metadata(
     mime_type: str,
 ) -> None:
     """
-    Save upload metadata to Firestore.
+    Save upload metadata to Firestore using global file storage pattern.
 
     Args:
         user_uid: User's Firebase UID
@@ -145,16 +145,24 @@ async def save_upload_metadata(
             "file_size": file_size,
             "mime_type": mime_type,
             "uploaded_at": datetime.utcnow(),
-            "user_uid": user_uid,
+            "uploaded_by": user_uid,
+            "blob_name": f"{user_uid}/{file_id}_{filename}",
         }
 
-        # Save to user's uploads subcollection
+        # Save to global files collection (accessible to all users)
+        files_ref = firestore_client.collection("files")
+        files_ref.document(file_id).set(upload_doc)
+        
+        # Also save to user's uploads for personal file management
         user_uploads_ref = (
             firestore_client.collection("users")
             .document(user_uid)
             .collection("uploads")
         )
-        user_uploads_ref.document(file_id).set(upload_doc)
+        user_uploads_ref.document(file_id).set({
+            "file_id": file_id,
+            "uploaded_at": datetime.utcnow(),
+        })
 
         logger.info(f"Saved upload metadata for file {file_id} by user {user_uid}")
 
@@ -188,11 +196,10 @@ async def upload_file(
 
         # Generate unique file ID and blob name
         file_id = str(uuid.uuid4())
-        file_extension = ""
-        if file.filename and "." in file.filename:
-            file_extension = "." + file.filename.split(".")[-1]
-
-        blob_name = f"{user_uid}/{file_id}_{file.filename or 'unnamed'}{file_extension}"
+        filename = file.filename or 'unnamed'
+        
+        # Construct consistent blob name (same format used in save_upload_metadata)
+        blob_name = f"{user_uid}/{file_id}_{filename}"
 
         logger.info(
             f"Uploading file '{file.filename}' for user {user_uid} as blob '{blob_name}'"
@@ -254,31 +261,46 @@ async def list_user_files(request: Request, user: dict = Depends(get_current_use
     user_uid = user["uid"]
 
     try:
+        # Get user's file IDs from their uploads subcollection
         user_uploads_ref = (
             firestore_client.collection("users")
             .document(user_uid)
             .collection("uploads")
         )
-        uploads = []
-
-        for doc in user_uploads_ref.order_by(
+        user_uploads = list(user_uploads_ref.order_by(
             "uploaded_at", direction=firestore.Query.DESCENDING
-        ).stream():
-            upload_data = doc.to_dict()
-            uploads.append(
-                {
-                    "id": upload_data.get("id"),
-                    "filename": upload_data.get("filename"),
-                    "download_url": upload_data.get("download_url"),
-                    "file_size": upload_data.get("file_size"),
-                    "mime_type": upload_data.get("mime_type"),
-                    "uploaded_at": (
-                        upload_data.get("uploaded_at").isoformat()
-                        if upload_data.get("uploaded_at")
-                        else None
-                    ),
-                }
-            )
+        ).stream())
+        
+        uploads = []
+        
+        # Get detailed file information from global files collection
+        for upload_doc in user_uploads:
+            upload_data = upload_doc.to_dict()
+            file_id = upload_data.get("file_id")
+            
+            if file_id:
+                # Get full file metadata from global collection
+                file_ref = firestore_client.collection("files").document(file_id)
+                file_doc = file_ref.get()
+                
+                if file_doc.exists:
+                    file_data = file_doc.to_dict()
+                    uploads.append(
+                        {
+                            "id": file_data.get("id"),
+                            "filename": file_data.get("filename"),
+                            "download_url": file_data.get("download_url"),
+                            "file_size": file_data.get("file_size"),
+                            "mime_type": file_data.get("mime_type"),
+                            "uploaded_at": (
+                                file_data.get("uploaded_at").isoformat()
+                                if file_data.get("uploaded_at")
+                                else None
+                            ),
+                        }
+                    )
+                else:
+                    logger.warning(f"File metadata not found in global collection for file_id: {file_id}")
 
         return JSONResponse(
             status_code=200,
@@ -302,6 +324,7 @@ async def delete_file(
 ):
     """
     API endpoint to delete an uploaded file.
+    Only the user who uploaded the file can delete it.
 
     Args:
         file_id: ID of the file to delete
@@ -314,35 +337,44 @@ async def delete_file(
     user_uid = user["uid"]
 
     try:
-        # Get file metadata from Firestore
-        user_uploads_ref = (
-            firestore_client.collection("users")
-            .document(user_uid)
-            .collection("uploads")
-        )
-        file_doc = user_uploads_ref.document(file_id).get()
+        # Get file metadata from global files collection
+        files_ref = firestore_client.collection("files")
+        file_doc = files_ref.document(file_id).get()
 
         if not file_doc.exists:
             raise HTTPException(status_code=404, detail="File not found")
 
         file_data = file_doc.to_dict()
+        
+        # Check if user is authorized to delete this file
+        if file_data.get("uploaded_by") != user_uid:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
         # Delete from GCS
         try:
             bucket = storage_client.bucket(settings.gcp_bucket_name)
-            # Reconstruct blob name
-            blob_name = f"{user_uid}/{file_id}_{file_data.get('filename', 'unnamed')}"
-            blob = bucket.blob(blob_name)
-            blob.delete()
-            logger.info(f"Deleted blob {blob_name} from GCS")
+            blob_name = file_data.get("blob_name")
+            if blob_name:
+                blob = bucket.blob(blob_name)
+                blob.delete()
+                logger.info(f"Deleted blob {blob_name} from GCS")
         except Exception as e:
             logger.warning(
                 f"Failed to delete blob from GCS: {e} (continuing with Firestore deletion)"
             )
 
-        # Delete from Firestore
+        # Delete from global files collection
+        files_ref.document(file_id).delete()
+        
+        # Delete from user's uploads collection
+        user_uploads_ref = (
+            firestore_client.collection("users")
+            .document(user_uid)
+            .collection("uploads")
+        )
         user_uploads_ref.document(file_id).delete()
-        logger.info(f"Deleted file {file_id} metadata from Firestore")
+        
+        logger.info(f"Deleted file {file_id} metadata from Firestore (uploaded by {user_uid})")
 
         return JSONResponse(
             status_code=200,
@@ -357,6 +389,39 @@ async def delete_file(
     except Exception as e:
         logger.error(f"Failed to delete file: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete file")
+
+
+@router.get("/download/{file_id}", response_description="Download file by ID (DEPRECATED)")
+async def download_file_by_id(
+    file_id: str, 
+    request: Request, 
+    user: dict = Depends(get_current_user)
+):
+    """
+    DEPRECATED: This endpoint is kept for backward compatibility but will be removed.
+    Please use GET /api/files/{file_id} instead.
+    
+    Args:
+        file_id: The file ID to download
+        request: FastAPI request object
+        user: Authenticated user (from dependency)
+    
+    Returns:
+        StreamingResponse: Redirects to the new endpoint
+    """
+    logger.warning(f"DEPRECATED endpoint accessed: /api/upload/download/{file_id}. Use /api/files/{file_id} instead.")
+    
+    # Construct the new URL path and redirect
+    new_url = f"/api/files/{file_id}"
+    
+    # Use absolute URL if host header is present
+    if request.headers.get("host"):
+        scheme = request.headers.get("x-forwarded-proto", "http")
+        new_url = f"{scheme}://{request.headers['host']}{new_url}"
+    
+    # Redirect to new endpoint
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=new_url, status_code=308)  # 308 Permanent Redirect
 
 
 @router.get("/health", response_description="Upload API health check")

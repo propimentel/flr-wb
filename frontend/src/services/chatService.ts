@@ -109,66 +109,49 @@ export class ChatService {
 
   /**
    * Upload file to backend and get URL
-   * This would typically call your backend API
    */
   async uploadFile(file: File, uid: string): Promise<FileMetadata> {
-    // This is a placeholder - you would implement the actual upload logic
-    // that calls your backend API
     const formData = new FormData();
     formData.append('file', file);
     formData.append('uid', uid);
 
-    try {
-      // Get Firebase auth token for backend authentication
-      const auth = getFirebaseAuth();
-      const user = auth.currentUser;
-      
-      const token = user ? await user.getIdToken() : null;
-      
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      // Example API call to your backend
-      const baseUrl = process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:4000' 
-        : (process.env.NEXT_PUBLIC_BACKEND_URL || '');
-      const response = await fetch(`${baseUrl}/api/upload/`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      
-      const fileMetadata: FileMetadata = {
-        id: result.id || crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: result.url || URL.createObjectURL(file), // Fallback to object URL for demo
-        uploadedAt: Date.now(),
-        uploadedBy: uid
-      };
-
-      return fileMetadata;
-    } catch (error) {
-      // Fallback for demo purposes
-      const fileMetadata: FileMetadata = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: URL.createObjectURL(file),
-        uploadedAt: Date.now(),
-        uploadedBy: uid
-      };
-      return fileMetadata;
+    // Get Firebase auth token for backend authentication
+    const auth = getFirebaseAuth();
+    const user = auth.currentUser;
+    
+    const token = user ? await user.getIdToken() : null;
+    
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
+
+    // Call backend API
+    const baseUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:4000' 
+      : (process.env.NEXT_PUBLIC_BACKEND_URL || '');
+    const response = await fetch(`${baseUrl}/api/upload/`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+
+    const result = await response.json();
+    
+    const fileMetadata: FileMetadata = {
+      id: result.id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      url: result.url,
+      uploadedAt: Date.now(),
+      uploadedBy: uid
+    };
+
+    return fileMetadata;
   }
 }

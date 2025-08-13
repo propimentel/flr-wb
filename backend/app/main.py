@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.admin import router as admin_router
 from app.api.upload import router as upload_router
+from app.api.files import router as files_router
 from app.core.settings import settings
 from app.deps.auth import get_current_user
 
@@ -34,6 +35,7 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(upload_router, prefix=settings.api_prefix, tags=["upload"])
+app.include_router(files_router, prefix=settings.api_prefix, tags=["files"])
 app.include_router(admin_router, prefix=f"{settings.api_prefix}/admin", tags=["admin"])
 
 # Get the directory of the current file

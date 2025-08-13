@@ -7,16 +7,24 @@ from fastapi.testclient import TestClient
 
 @pytest.mark.integration
 def test_list_user_files(client: TestClient, mock_auth_user, mock_firebase_admin):
-    """Test listing user's uploaded files"""
+    """Test listing user's uploaded files with new global files architecture"""
     # Mock the dependency
     from app.deps.auth import get_current_user
     from app.main import app
 
     app.dependency_overrides[get_current_user] = lambda: mock_auth_user
 
-    # Mock Firestore query result
-    mock_doc = Mock()
-    mock_doc.to_dict.return_value = {
+    # Mock user uploads subcollection (contains file IDs)
+    mock_user_upload_doc = Mock()
+    mock_user_upload_doc.to_dict.return_value = {
+        "file_id": "file-123",
+        "uploaded_at": None,
+    }
+
+    # Mock global files collection (contains full file metadata)
+    mock_file_doc = Mock()
+    mock_file_doc.exists = True
+    mock_file_doc.to_dict.return_value = {
         "id": "file-123",
         "filename": "test.txt",
         "download_url": "https://example.com/test.txt",
@@ -25,9 +33,13 @@ def test_list_user_files(client: TestClient, mock_auth_user, mock_firebase_admin
         "uploaded_at": None,
     }
 
+    # Mock the chain: users/{uid}/uploads -> order_by -> stream (returns user uploads)
     mock_firebase_admin.collection.return_value.document.return_value.collection.return_value.order_by.return_value.stream.return_value = [
-        mock_doc
+        mock_user_upload_doc
     ]
+    
+    # Mock the chain: files/{file_id} -> get (returns full file metadata)
+    mock_firebase_admin.collection.return_value.document.return_value.get.return_value = mock_file_doc
 
     response = client.get("/api/upload")
 
@@ -45,24 +57,27 @@ def test_list_user_files(client: TestClient, mock_auth_user, mock_firebase_admin
 def test_delete_user_file(
     client: TestClient, mock_auth_user, mock_firebase_admin, mock_gcs
 ):
-    """Test deleting user's uploaded file"""
+    """Test deleting user's uploaded file with new global files architecture"""
     # Mock the dependency
     from app.deps.auth import get_current_user
     from app.main import app
 
     app.dependency_overrides[get_current_user] = lambda: mock_auth_user
 
-    # Mock Firestore document
-    mock_doc = Mock()
-    mock_doc.exists = True
-    mock_doc.to_dict.return_value = {"filename": "test.txt"}
+    # Mock global files document
+    mock_file_doc = Mock()
+    mock_file_doc.exists = True
+    mock_file_doc.to_dict.return_value = {
+        "filename": "test.txt",
+        "uploaded_by": "test-user-123",  # Same as mock_auth_user["uid"]
+        "blob_name": "test-user-123/file-123_test.txt"
+    }
 
-    mock_firebase_admin.collection.return_value.document.return_value.collection.return_value.document.return_value.get.return_value = (
-        mock_doc
-    )
-    mock_firebase_admin.collection.return_value.document.return_value.collection.return_value.document.return_value.delete.return_value = (
-        None
-    )
+    # Mock global files collection get
+    mock_firebase_admin.collection.return_value.document.return_value.get.return_value = mock_file_doc
+    
+    # Mock deletions from both collections
+    mock_firebase_admin.collection.return_value.document.return_value.delete.return_value = None
 
     # Mock GCS delete
     mock_blob = Mock()
@@ -89,13 +104,12 @@ def test_delete_nonexistent_file(
 
     app.dependency_overrides[get_current_user] = lambda: mock_auth_user
 
-    # Mock Firestore document not found
+    # Mock global files document not found
     mock_doc = Mock()
     mock_doc.exists = False
 
-    mock_firebase_admin.collection.return_value.document.return_value.collection.return_value.document.return_value.get.return_value = (
-        mock_doc
-    )
+    # Mock the global files collection get
+    mock_firebase_admin.collection.return_value.document.return_value.get.return_value = mock_doc
 
     response = client.delete("/api/upload/nonexistent-file")
 
@@ -103,6 +117,37 @@ def test_delete_nonexistent_file(
     app.dependency_overrides.clear()
 
     assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_delete_unauthorized_file(
+    client: TestClient, mock_auth_user, mock_firebase_admin
+):
+    """Test that users cannot delete files uploaded by others"""
+    # Mock the dependency
+    from app.deps.auth import get_current_user
+    from app.main import app
+
+    app.dependency_overrides[get_current_user] = lambda: mock_auth_user
+
+    # Mock global files document uploaded by different user
+    mock_file_doc = Mock()
+    mock_file_doc.exists = True
+    mock_file_doc.to_dict.return_value = {
+        "filename": "test.txt",
+        "uploaded_by": "other-user-456",  # Different from mock_auth_user["uid"]
+        "blob_name": "other-user-456/file-123_test.txt"
+    }
+
+    # Mock global files collection get
+    mock_firebase_admin.collection.return_value.document.return_value.get.return_value = mock_file_doc
+
+    response = client.delete("/api/upload/file-123")
+
+    # Clean up override
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 403  # Forbidden
 
 
 @pytest.mark.integration

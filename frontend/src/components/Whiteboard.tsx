@@ -87,39 +87,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
   useEffect(() => {
     const handleResize = () => {
       if (canvasRef.current) {
-        // Debug the full layout hierarchy
-        const canvas = canvasRef.current;
-        const container = canvas.parentElement; // Canvas container
-        const whiteboardContainer = container?.parentElement; // Whiteboard component root
-        const mainContainer = whiteboardContainer?.parentElement; // Main whiteboard section
-        
-        console.log('FULL LAYOUT HIERARCHY:', {
-          canvas: {
-            width: canvas.offsetWidth,
-            height: canvas.offsetHeight,
-            rect: canvas.getBoundingClientRect()
-          },
-          canvasContainer: {
-            width: container?.offsetWidth,
-            height: container?.offsetHeight,
-            rect: container?.getBoundingClientRect()
-          },
-          whiteboardComponent: {
-            width: whiteboardContainer?.offsetWidth,
-            height: whiteboardContainer?.offsetHeight,
-            rect: whiteboardContainer?.getBoundingClientRect()
-          },
-          mainWhiteboardSection: {
-            width: mainContainer?.offsetWidth,
-            height: mainContainer?.offsetHeight,
-            rect: mainContainer?.getBoundingClientRect()
-          },
-          windowSize: {
-            width: window.innerWidth,
-            height: window.innerHeight
-          }
-        });
-        
         // Small delay to ensure DOM has updated
         setTimeout(() => {
           if (canvasRef.current) {
@@ -234,20 +201,6 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ boardId }) => {
 
   const endDrawing = useCallback(() => {
     if (!canvasRef.current || drawingState.currentStroke.length === 0) return;
-
-    // Debug: log current stroke points and canvas dimensions
-    console.log('End drawing - stroke points:', drawingState.currentStroke);
-    console.log('Canvas dimensions before save:', {
-      canvas: { width: canvasRef.current.width, height: canvasRef.current.height },
-      display: { width: canvasRef.current.offsetWidth, height: canvasRef.current.offsetHeight },
-      container: { 
-        width: canvasRef.current.parentElement?.offsetWidth, 
-        height: canvasRef.current.parentElement?.offsetHeight 
-      }
-    });
-
-    // Don't resize canvas here - it causes the clipping issue
-    // The canvas should maintain its current correct dimensions
 
     const chunk: StrokeChunk = {
       id: '',

@@ -145,10 +145,6 @@ export const resizeCanvas = (canvas: HTMLCanvasElement): void => {
   
   // If we still don't have valid dimensions, don't resize
   if (!width || !height || width < 50 || height < 50) {
-    console.log('Skipping canvas resize - invalid dimensions:', { 
-      parentRect: { width: parentRect?.width, height: parentRect?.height },
-      canvasRect: { width: canvasRect.width, height: canvasRect.height }
-    });
     return;
   }
   
@@ -161,7 +157,6 @@ export const resizeCanvas = (canvas: HTMLCanvasElement): void => {
   const currentDisplayHeight = Math.round(canvas.height / devicePixelRatio);
   
   if (Math.abs(currentDisplayWidth - width) < 2 && Math.abs(currentDisplayHeight - height) < 2) {
-    console.log('Canvas already correct size, skipping resize');
     return;
   }
   
@@ -178,14 +173,6 @@ export const resizeCanvas = (canvas: HTMLCanvasElement): void => {
   if (ctx) {
     ctx.scale(devicePixelRatio, devicePixelRatio);
   }
-  
-  // Debug log to see actual dimensions
-  console.log('Canvas resized to:', {
-    target: { width, height },
-    actual: { width: canvas.width, height: canvas.height },
-    parent: { width: parentRect?.width, height: parentRect?.height },
-    canvas: { width: canvasRect.width, height: canvasRect.height }
-  });
 };
 
 /**

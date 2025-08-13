@@ -53,9 +53,14 @@ def client(mock_firebase_admin, mock_gcs):
     """Create test client with mocked dependencies"""
     with patch("app.api.upload.firestore_client", mock_firebase_admin), patch(
         "app.api.upload.storage_client"
-    ) as mock_storage:
+    ) as mock_storage, patch(
+        "app.api.files.firestore_client", mock_firebase_admin
+    ), patch(
+        "app.api.files.storage_client"
+    ) as mock_files_storage:
 
         mock_storage.bucket.return_value = mock_gcs
+        mock_files_storage.bucket.return_value = mock_gcs
 
         from app.main import app
 
